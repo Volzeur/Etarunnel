@@ -1,4 +1,4 @@
-const { app, BrowserWindow, WebContentsView, ipcMain, session, Menu, net, nativeTheme } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, session, Menu, net, nativeTheme, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -66,7 +66,7 @@ function parseFontFaces(css) {
   for (const chunk of css.split('@font-face').slice(1)) {
     const body = chunk.slice(0, chunk.indexOf('}'));
     const prop = (name) => {
-      const m = body.match(new RegExp(name + '\\s*:\\s*([^;]+)'));
+      const m = body.match(new RegExp(name + 's*:s*([^;]+)'));
       return m ? m[1].trim().replace(/['"]/g, '') : null;
     };
     const src = body.match(/url\(\s*['"]?(https:[^'")]+)['"]?\s*\)/);
@@ -296,6 +296,73 @@ function createServiceView(key) {
   });
 
   const wc = view.webContents;
+
+  // --- START: Intercept external links (Descriptions, Merch, etc.) ---
+  const isInternalHost = (hostname) => {
+    if (!hostname) return false;
+    return (
+      hostname === 'youtube.com' || hostname.endsWith('.youtube.com') ||
+      hostname === 'youtu.be' ||
+      hostname === 'google.com' || hostname.endsWith('.google.com') ||
+      hostname === 'gstatic.com' || hostname.endsWith('.gstatic.com') ||
+      hostname === 'googlevideo.com' || hostname.endsWith('.googlevideo.com') ||
+      hostname === 'googleapis.com' || hostname.endsWith('.googleapis.com') ||
+      hostname === 'googleadservices.com' || hostname.endsWith('.googleadservices.com')
+    );
+  };
+
+  const getExternalUrl = (urlStr) => {
+    try {
+      const parsedUrl = new URL(urlStr);
+      if (parsedUrl.protocol === 'about:' || parsedUrl.protocol === 'data:' || parsedUrl.protocol === 'blob:') return null;
+      
+      const hostname = parsedUrl.hostname.toLowerCase();
+      
+      // Intercept YouTube's redirect endpoint (used for tracking links in descriptions)
+      if (hostname.endsWith('youtube.com') && parsedUrl.pathname === '/redirect') {
+        const dest = parsedUrl.searchParams.get('q');
+        if (dest) {
+          try {
+            const destParsed = new URL(dest);
+            if (!isInternalHost(destParsed.hostname.toLowerCase())) {
+              return dest;
+            } else {
+              return null; // It's an internal redirect, allow normal navigation
+            }
+          } catch (e) {
+            return null;
+          }
+        }
+      }
+      
+      if (!isInternalHost(hostname)) {
+        return urlStr;
+      }
+    } catch (err) {
+      // Invalid URL, let Electron handle it or ignore
+    }
+    return null;
+  };
+
+  // 1. Handle standard link clicks (replaces current view)
+  wc.on('will-navigate', (event, url) => {
+    const externalUrl = getExternalUrl(url);
+    if (externalUrl) {
+      event.preventDefault();
+      shell.openExternal(externalUrl);
+    }
+  });
+
+  // 2. Handle links that try to open in a new window/tab (e.g., target="_blank")
+  wc.setWindowOpenHandler(({ url }) => {
+    const externalUrl = getExternalUrl(url);
+    if (externalUrl) {
+      shell.openExternal(externalUrl);
+      return { action: 'deny' };
+    }
+    return { action: 'allow' };
+  });
+  // --- END: Intercept external links ---
 
   wc.on('dom-ready', () => injectPoppins(wc));
   wc.on('did-finish-load', () => injectPoppins(wc));
