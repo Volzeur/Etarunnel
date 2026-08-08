@@ -1,0 +1,199 @@
+:root {
+  --toolbar-h: 64px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+
+/* ---------- theme tokens (dark = default) ---------- */
+body {
+  --bg: #0f0f0f;
+  --toolbar-bg: #212121;
+  --surface: #1c1c22;
+  --chip-bg: rgba(255, 255, 255, .06);
+  --hover-bg: rgba(255, 255, 255, .08);
+  --line: rgba(255, 255, 255, .08);
+  --text: #f1f1f1;
+  --muted: #a5a5a5;
+  --icon-disabled: rgba(255, 255, 255, .22);
+  --spinner-track: rgba(255, 255, 255, .15);
+  --accent: #5570c3;
+  --accent-hover: #1a86e0;
+  --accent-soft: rgba(0, 116, 217, .28);
+}
+body[data-theme="light"] {
+  --bg: #ffffff;
+  --toolbar-bg: #f5f5f5;
+  --surface: #f2f2f2;
+  --chip-bg: rgba(0, 0, 0, .05);
+  --hover-bg: rgba(0, 0, 0, .06);
+  --line: rgba(0, 0, 0, .12);
+  --text: #0f0f0f;
+  --muted: #606060;
+  --icon-disabled: rgba(0, 0, 0, .28);
+  --spinner-track: rgba(0, 0, 0, .15);
+  --accent: #5570c3;
+  --accent-hover: #005fb3;
+  --accent-soft: rgba(0, 116, 217, .18);
+}
+
+body {
+  font-family: 'Poppins', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* ---------- brand logo: theme swap ---------- */
+/* Sizing only — visibility is controlled solely by the theme rules below. */
+.brand-logo { height: 24px; width: auto; object-fit: contain; }
+
+.logo-dark { display: block; }
+.logo-light { display: none; }
+body[data-theme="light"] .logo-dark { display: none; }
+body[data-theme="light"] .logo-light { display: block; }
+
+/* ---------------- toolbar ---------------- */
+
+#toolbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--toolbar-h);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px 0 16px;
+  background: var(--toolbar-bg);
+  border-bottom: 1px solid var(--line);
+  -webkit-app-region: drag;
+  z-index: 10;
+}
+
+#toolbar button { -webkit-app-region: no-drag; }
+
+.cluster { display: flex; align-items: center; gap: 6px; }
+
+.icon-btn {
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, transform .06s ease;
+}
+.icon-btn svg { width: 17px; height: 17px; display: block; }
+.icon-btn:hover:not(:disabled) { background: var(--hover-bg); }
+.icon-btn:active:not(:disabled) { transform: scale(.9); }
+.icon-btn:disabled { color: var(--icon-disabled); cursor: default; }
+.icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* brand */
+
+.brand { display: flex; align-items: center; margin: 0 8px 0 2px; }
+
+/* service switcher */
+
+.switcher {
+  display: flex; gap: 4px;
+  padding: 4px;
+  background: var(--chip-bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.switch-btn {
+  display: flex; align-items: center; justify-content: center;
+  padding: 8px 20px;
+  border: 0; border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: 500 12.5px/1 'Poppins', sans-serif;
+  letter-spacing: .25px;
+  cursor: pointer;
+  transition: color .18s ease, background .18s ease, transform .06s ease;
+}
+.switch-btn:hover { color: var(--text); background: var(--hover-bg); }
+.switch-btn:active { transform: scale(.97); }
+
+body[data-active="youtube"] .switch-btn[data-service="youtube"],
+body[data-active="music"]   .switch-btn[data-service="music"] {
+  color: #fff;
+  background: var(--accent);
+}
+
+/* live page title + window controls */
+
+#page-title {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.win-cluster { padding-left: 6px; }
+.win-btn { width: 36px; height: 32px; border-radius: 9px; color: var(--muted); }
+.win-btn:hover { background: var(--hover-bg); color: var(--text); }
+.win-btn.close:hover { background: #e81123; color: #fff; }
+
+/* FIXED: scoped so these outrank `.icon-btn svg { display: block }` —
+   previously both maximize icons rendered stacked. */
+.icon-btn .ic-restore { display: none; }
+body.maximized .icon-btn .ic-max { display: none; }
+body.maximized .icon-btn .ic-restore { display: block; }
+
+/* loading sweep (functional progress bar) */
+
+#progress {
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+#progress::after {
+  content: '';
+  position: absolute; inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--accent) 30%, #7fc0ff 50%, var(--accent) 70%, transparent);
+}
+body.loading #progress::after { animation: sweep 1.1s cubic-bezier(.45, .05, .55, .95) infinite; }
+@keyframes sweep { to { transform: translateX(100%); } }
+
+/* stage — flat, no glow */
+
+#stage {
+  position: fixed;
+  top: var(--toolbar-h); left: 0; right: 0; bottom: 0;
+  background: var(--bg);
+}
+
+/* waiting overlay: spinner only (no logo) */
+
+#boot {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  opacity: 0;
+  transition: opacity .22s ease;
+  pointer-events: none;
+}
+body.waiting #boot { opacity: 1; }
+
+.spinner {
+  width: 34px; height: 34px;
+  border: 3px solid var(--spinner-track);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.boot-name { font-size: 14px; font-weight: 600; letter-spacing: .3px; }
+.boot-sub { font-size: 11px; color: var(--muted); letter-spacing: .4px; }
