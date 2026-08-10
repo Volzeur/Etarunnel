@@ -4,13 +4,9 @@ Etarunnel is an Electron-based desktop client for YouTube and YouTube Music. It 
 
 ## Features
 
+YouTube with extended feature such as:
 - **Ad Blocking:** Intercepts network requests and API responses to block video and banner ads.
 - **Dual Services:** Supports switching between YouTube and YouTube Music instances.
-- **Font Injection:** Injects custom fonts (Poppins) into the main document and Shadow DOM elements.
-- **Theme Syncing:** Syncs with the system's native dark/light theme preferences.
-- **External Link Routing:** Routes external links (e.g., description links, merch, social media) to the default system browser instead of navigating within the app.
-- **Frameless Window:** Custom titlebar with window controls and navigation buttons (Back, Forward, Reload).
-- **Toast Notifications:** UI prompts for switching between services.
 
 ## Keyboard Shortcuts
 
