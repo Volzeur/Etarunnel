@@ -12,12 +12,6 @@ Etarunnel is an Electron-based desktop client for YouTube and YouTube Music. It 
 - **Frameless Window:** Custom titlebar with window controls and navigation buttons (Back, Forward, Reload).
 - **Toast Notifications:** UI prompts for switching between services.
 
-## Screenshots
-
-| Dark Mode | Light Mode |
-| :---: | :---: |
-| ![Dark Mode](etarunnel-dark.png) | ![Light Mode](etarunnel-light.png) |
-
 ## Keyboard Shortcuts
 
 | Action | Shortcut |
