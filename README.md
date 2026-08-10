@@ -20,7 +20,6 @@ YouTube with extended feature such as:
 | Zoom In | `Ctrl/Cmd` + `+` |
 | Zoom Out | `Ctrl/Cmd` + `-` |
 | Reset Zoom | `Ctrl/Cmd` + `0` |
-| Open DevTools | `Ctrl/Cmd` + `Shift` + `I` |
 
 ## Installation
 
