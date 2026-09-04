@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Etarunnel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-active="youtube" data-theme="dark">
+
+<header id="toolbar">
+
+  <!-- navigation -->
+  <div class="cluster">
+    <button id="btn-back" class="icon-btn" title="Back · Alt+←" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <button id="btn-forward" class="icon-btn" title="Forward · Alt+→" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+    <button id="btn-reload" class="icon-btn" title="Reload · Ctrl+R">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    </button>
+  </div>
+
+  <!-- brand: logo + wordmark as a single theme-aware image -->
+  <div class="brand">
+    <img class="brand-logo logo-dark" src="etarunnel-dark.png" alt="Etarunnel" />
+    <img class="brand-logo logo-light" src="etarunnel-light.png" alt="Etarunnel" />
+  </div>
+
+  <!-- service switcher -->
+  <nav class="switcher" aria-label="Service">
+    <button class="switch-btn" data-service="youtube" title="Video · Ctrl+1">Video</button>
+    <button class="switch-btn" data-service="music" title="Music · Ctrl+2">Music</button>
+  </nav>
+
+  <div id="page-title"></div>
+
+  <!-- window controls -->
+  <div class="cluster win-cluster">
+    <button id="btn-min" class="icon-btn win-btn" title="Minimize">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+    </button>
+    <button id="btn-max" class="icon-btn win-btn" title="Maximize">
+      <svg class="ic-max" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="1.5"/></svg>
+      <svg class="ic-restore" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+    </button>
+    <button id="btn-close" class="icon-btn win-btn close" title="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <div id="progress"></div>
+</header>
+
+<main id="stage">
+  <!-- loading overlay: spinner only, no logo -->
+  <div id="boot">
+    <div class="spinner"></div>
+    <div class="boot-name" id="boot-name">Video</div>
+    <div class="boot-sub">Just a moment…</div>
+  </div>
+</main>
+
+<script src="renderer.js"></script>
+</body>
+</html>
