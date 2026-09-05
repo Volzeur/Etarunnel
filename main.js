@@ -672,10 +672,18 @@ function destroyCurrentView() {
 
 function doSwitch(key) {
   if (!SERVICES[key]) return;
+  
+  // 1. If the Psidio overlay is open, destroy it first to free up memory
+  if (videoView) {
+    closeVideoView();
+  }
+
   if (key === currentKey) {
     activeWC()?.focus();
     return;
   }
+  
+  // 2. Now proceed with the standard service switch
   destroyCurrentView();
   loadService(key);
 }
@@ -696,7 +704,7 @@ function requestSwitch(key) {
 
 function createToastWindow() {
   toastWin = new BrowserWindow({
-    width: 480,
+    width: 400,
     height: 136,
     parent: win,
     frame: false,
@@ -708,7 +716,7 @@ function createToastWindow() {
     skipTaskbar: true,
     alwaysOnTop: true,
     show: false,
-    backgroundColor: '#00000000',
+    hasShadow: false, 
     webPreferences: {
       preload: path.join(__dirname, 'toast-preload.js'),
       contextIsolation: true,
@@ -721,12 +729,18 @@ function createToastWindow() {
 
 function positionToast() {
   if (!toastWin || toastWin.isDestroyed() || !win || win.isDestroyed()) return;
+  
+  // SAFETY NET: Force the size to reset every time we calculate position
+  toastWin.setSize(400, 136);
+  
   const b = win.getBounds();
   const [w, h] = toastWin.getSize();
-  toastWin.setPosition(
-    Math.round(b.x + (b.width - w) / 2),
-    Math.round(b.y + b.height - h - 40)
-  );
+  
+  const pixelsFromLeft = 280; // Adjust this to your liking
+  const x = Math.round(b.x + pixelsFromLeft);
+  const y = Math.round(b.y + TOOLBAR_HEIGHT + 8);
+
+  toastWin.setPosition(x, y);
 }
 
 function trackToast() {
