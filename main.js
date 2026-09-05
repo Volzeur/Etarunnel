@@ -68,59 +68,67 @@ function injectCloseButton(wc) {
   const script = `
     (function() {
       if (document.getElementById('etarunnel-close-btn')) return;
+
+      // 1. Inject the CSS styles to match Psidio's theme toggle
+      const style = document.createElement('style');
+      style.textContent = \`
+        #etarunnel-close-btn {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          z-index: 2147483647;
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
+          
+          /* Use Psidio variables if available, otherwise fallback to YouTube/OS defaults */
+          background: var(--surface, rgba(255, 255, 255, 0.9));
+          border: 1px solid var(--border, rgba(0, 0, 0, 0.1));
+          color: var(--text-primary, #000000);
+          
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: sans-serif;
+          font-weight: 900;
+          font-size: 18px;
+          backdrop-filter: blur(5px);
+        }
+
+        #etarunnel-close-btn:hover {
+          background: var(--surface-hover, rgba(0, 0, 0, 0.1));
+          transform: scale(1.05);
+        }
+
+        /* Dark mode fallbacks for when Psidio variables aren't loaded yet */
+        [dark="true"] #etarunnel-close-btn, 
+        [data-theme="dark"] #etarunnel-close-btn {
+          background: var(--surface, rgba(40, 40, 40, 0.9));
+          border-color: var(--border, rgba(255, 255, 255, 0.1));
+          color: var(--text-primary, #ffffff);
+        }
+        
+        [dark="true"] #etarunnel-close-btn:hover,
+        [data-theme="dark"] #etarunnel-close-btn:hover {
+          background: var(--surface-hover, rgba(60, 60, 60, 0.9));
+        }
+
+        @media (max-width: 600px) {
+          #etarunnel-close-btn {
+            top: 12px;
+            right: 12px;
+          }
+        }
+      \`;
+      document.head.appendChild(style);
+
+      // 2. Create the button element
       const btn = document.createElement('button');
       btn.id = 'etarunnel-close-btn';
       btn.innerText = '✕';
-      
-      // Base styles (without colors so we can theme them)
-      btn.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 2147483647; width: 36px; height: 36px; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; backdrop-filter: blur(5px); font-family: sans-serif; box-shadow: 0 2px 8px rgba(0,0,0,0.2);';
-      
-      function applyTheme() {
-        // 1. Check for YouTube's native dark mode attribute
-        const isYouTubeDark = document.documentElement.getAttribute('dark') === 'true' || 
-                              document.documentElement.getAttribute('dark') === '';
-                              
-        // 2. Check for Psidio's custom theme attribute
-        const isPsidioDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        const isPsidioLight = document.documentElement.getAttribute('data-theme') === 'light';
-        
-        // 3. Fallback: Check system preference
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-        let isDark = false;
-        
-        if (isYouTubeDark || isPsidioDark) {
-          isDark = true;
-        } else if (isPsidioLight) {
-          isDark = false;
-        } else {
-          isDark = systemDark;
-        }
-        
-        // Apply colors based on the detected theme
-        if (isDark) {
-          btn.style.background = 'rgba(40, 40, 40, 0.85)';
-          btn.style.color = '#ffffff';
-          btn._hoverBg = 'rgba(60, 60, 60, 0.95)';
-          btn._normalBg = 'rgba(40, 40, 40, 0.85)';
-        } else {
-          btn.style.background = 'rgba(255, 255, 255, 0.85)';
-          btn.style.color = '#000000';
-          btn._hoverBg = 'rgba(230, 230, 230, 0.95)';
-          btn._normalBg = 'rgba(255, 255, 255, 0.85)';
-        }
-      }
-
-      applyTheme();
-
-      btn.onmouseover = () => { 
-        btn.style.background = btn._hoverBg; 
-        btn.style.transform = 'scale(1.1)'; 
-      };
-      btn.onmouseout = () => { 
-        btn.style.background = btn._normalBg; 
-        btn.style.transform = 'scale(1)'; 
-      };
+      btn.setAttribute('aria-label', 'Close video overlay');
       
       btn.onclick = (e) => {
         e.preventDefault();
@@ -129,13 +137,6 @@ function injectCloseButton(wc) {
       };
       
       document.body.appendChild(btn);
-
-      // Watch for YouTube/Psidio theme changes dynamically
-      const observer = new MutationObserver(applyTheme);
-      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['dark', 'data-theme'] });
-      
-      // Apply on initial load after a small delay to ensure DOM is fully ready
-      setTimeout(applyTheme, 500);
     })();
   `;
   wc.executeJavaScript(script).catch(e => console.warn('[Etarunnel] Close button injection failed:', e.message));
