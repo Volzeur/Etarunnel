@@ -9,7 +9,7 @@
   html, body { height: 100%; }
   body {
     font-family: 'Poppins', 'Segoe UI', sans-serif;
-    background: transparent;
+    background: transparent !important;
     display: grid; place-items: center;
     user-select: none; overflow: hidden;
     /* dark default */
@@ -37,7 +37,6 @@
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 16px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, .35);   /* plain drop shadow, no glow */
     padding: 16px 18px;
     display: flex; flex-direction: column; gap: 8px;
     animation: pop .18s cubic-bezier(.2, .9, .3, 1.4);
@@ -46,7 +45,7 @@
   h1 { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; }
   h1 b { color: var(--accent); font-weight: 600; }
   p { font-size: 11px; color: var(--muted); }
-  .actions { margin-left: auto; display: flex; gap: 8px; margin-top: auto; }
+  .actions { display: flex; gap: 8px; margin-top: auto; }
   button {
     font: 500 11.5px 'Poppins', sans-serif;
     letter-spacing: .2px;
