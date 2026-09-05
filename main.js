@@ -551,9 +551,23 @@ function createServiceView(key) {
           injectPoppins(videoView.webContents);
           injectCloseButton(videoView.webContents);
         });
-        
+
         videoView.webContents.on('did-navigate', () => {
-          injectCloseButton(videoView.webContents); // Re-inject in case of SPA route changes
+          injectCloseButton(videoView.webContents); 
+        });
+
+        // --- ADD THESE FULLSCREEN LISTENERS FOR PSIDIO ---
+        videoView.webContents.on('enter-html-full-screen', () => {
+          htmlFullScreen = true;
+          fsPrevWinFullScreen = win.isFullScreen();
+          if (!fsPrevWinFullScreen) win.setFullScreen(true);
+          layoutViews();
+        });
+
+        videoView.webContents.on('leave-html-full-screen', () => {
+          htmlFullScreen = false;
+          if (!fsPrevWinFullScreen && win.isFullScreen()) win.setFullScreen(false);
+          layoutViews();
         });
 
         // Intercept the custom close URL triggered by the close button
