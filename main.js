@@ -25,12 +25,189 @@ let waitingForFonts = false;
 let currentTheme = 'dark';
 let htmlFullScreen = false;
 let fsPrevWinFullScreen = false;
+let videoView = null; // Tracks the overlay video player
 
 const hist = (wc) => wc.navigationHistory ?? wc;
 
 function activeWC() {
+  // If the video overlay is open, it takes focus
+  if (videoView && !videoView.webContents.isDestroyed()) return videoView.webContents;
   const wc = currentView?.webContents;
   return wc && !wc.isDestroyed() ? wc : null;
+}
+
+/* ------------------- Video Overlay Management ------------------ */
+function closeVideoView() {
+  if (!videoView) return;
+  console.log('[Etarunnel] Closing video overlay...');
+  
+  try { 
+    if (win && !win.isDestroyed()) {
+      win.contentView.removeChildView(videoView); 
+    }
+  } catch (e) { console.warn('[Etarunnel] removeChildView error:', e); }
+  
+  try {
+    const wc = videoView.webContents;
+    if (wc && !wc.isDestroyed()) {
+      if (typeof wc.close === 'function') wc.close();
+      else wc.destroy();
+    }
+  } catch (e) { console.warn('[Etarunnel] destroy error:', e); }
+  
+  videoView = null;
+  layoutViews();
+  const wc = activeWC();
+  if (wc && !wc.isDestroyed()) wc.focus();
+  broadcast();
+}
+
+/* ------------------- Psidio Close Button Injection ------------------- */
+// Injects a floating "X" button into the Psidio overlay to close it
+function injectCloseButton(wc) {
+  const script = `
+    (function() {
+      if (document.getElementById('etarunnel-close-btn')) return;
+      const btn = document.createElement('button');
+      btn.id = 'etarunnel-close-btn';
+      btn.innerText = '✕';
+      
+      // Base styles (without colors so we can theme them)
+      btn.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 2147483647; width: 36px; height: 36px; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; backdrop-filter: blur(5px); font-family: sans-serif; box-shadow: 0 2px 8px rgba(0,0,0,0.2);';
+      
+      function applyTheme() {
+        // 1. Check for YouTube's native dark mode attribute
+        const isYouTubeDark = document.documentElement.getAttribute('dark') === 'true' || 
+                              document.documentElement.getAttribute('dark') === '';
+                              
+        // 2. Check for Psidio's custom theme attribute
+        const isPsidioDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const isPsidioLight = document.documentElement.getAttribute('data-theme') === 'light';
+        
+        // 3. Fallback: Check system preference
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        let isDark = false;
+        
+        if (isYouTubeDark || isPsidioDark) {
+          isDark = true;
+        } else if (isPsidioLight) {
+          isDark = false;
+        } else {
+          isDark = systemDark;
+        }
+        
+        // Apply colors based on the detected theme
+        if (isDark) {
+          btn.style.background = 'rgba(40, 40, 40, 0.85)';
+          btn.style.color = '#ffffff';
+          btn._hoverBg = 'rgba(60, 60, 60, 0.95)';
+          btn._normalBg = 'rgba(40, 40, 40, 0.85)';
+        } else {
+          btn.style.background = 'rgba(255, 255, 255, 0.85)';
+          btn.style.color = '#000000';
+          btn._hoverBg = 'rgba(230, 230, 230, 0.95)';
+          btn._normalBg = 'rgba(255, 255, 255, 0.85)';
+        }
+      }
+
+      applyTheme();
+
+      btn.onmouseover = () => { 
+        btn.style.background = btn._hoverBg; 
+        btn.style.transform = 'scale(1.1)'; 
+      };
+      btn.onmouseout = () => { 
+        btn.style.background = btn._normalBg; 
+        btn.style.transform = 'scale(1)'; 
+      };
+      
+      btn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window.location.href = 'etarunnel://close';
+      };
+      
+      document.body.appendChild(btn);
+
+      // Watch for YouTube/Psidio theme changes dynamically
+      const observer = new MutationObserver(applyTheme);
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['dark', 'data-theme'] });
+      
+      // Apply on initial load after a small delay to ensure DOM is fully ready
+      setTimeout(applyTheme, 500);
+    })();
+  `;
+  wc.executeJavaScript(script).catch(e => console.warn('[Etarunnel] Close button injection failed:', e.message));
+}
+
+/* ------------------- Video Click Interceptor ------------------- */
+function videoInterceptMainWorld() {
+  if (window.__tdVideoIntercept) return;
+  window.__tdVideoIntercept = true;
+
+  const getVideoId = (urlStr) => {
+    try {
+      const parsedUrl = new URL(urlStr, window.location.origin);
+      const hostname = parsedUrl.hostname.toLowerCase().replace(/^www\./, '');
+      
+      if ((hostname === 'youtube.com' || hostname === 'm.youtube.com') && parsedUrl.pathname === '/watch') {
+        return parsedUrl.searchParams.get('v');
+      }
+      if (hostname === 'youtu.be') {
+        return parsedUrl.pathname.slice(1).split(/[?#]/)[0];
+      }
+      // /shorts/ are ignored so they play natively
+    } catch (e) {}
+    return null;
+  };
+
+  const openPsidio = (videoId) => {
+    console.log('[Etarunnel Page] Opening Psidio overlay for video:', videoId);
+    window.open(`https://psidio.web.app/etarunnel/?watch=${videoId}`, '_blank');
+  };
+
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a');
+    if (a) {
+      const href = a.getAttribute('href');
+      if (href) {
+        const videoId = getVideoId(href);
+        if (videoId) {
+          e.preventDefault();
+          e.stopPropagation();
+          openPsidio(videoId);
+        }
+      }
+    }
+  }, true);
+
+  const originalPushState = history.pushState;
+  history.pushState = function(state, title, url) {
+    if (url) {
+      const videoId = getVideoId(url);
+      if (videoId) { openPsidio(videoId); return; }
+    }
+    return originalPushState.apply(this, arguments);
+  };
+
+  const originalReplaceState = history.replaceState;
+  history.replaceState = function(state, title, url) {
+    if (url) {
+      const videoId = getVideoId(url);
+      if (videoId) { openPsidio(videoId); return; }
+    }
+    return originalReplaceState.apply(this, arguments);
+  };
+
+  const originalOpen = window.open;
+  window.open = function(url, name, features) {
+    if (url) {
+      const videoId = getVideoId(url);
+      if (videoId) { openPsidio(videoId); return null; }
+    }
+    return originalOpen.call(window, url, name, features);
+  };
 }
 
 /* --------------------------- Poppins --------------------------- */
@@ -297,7 +474,7 @@ function createServiceView(key) {
 
   const wc = view.webContents;
 
-  // --- START: Intercept external links (Descriptions, Merch, etc.) ---
+  // --- START: Intercept external links & Video overlay ---
   const isInternalHost = (hostname) => {
     if (!hostname) return false;
     return (
@@ -307,7 +484,8 @@ function createServiceView(key) {
       hostname === 'gstatic.com' || hostname.endsWith('.gstatic.com') ||
       hostname === 'googlevideo.com' || hostname.endsWith('.googlevideo.com') ||
       hostname === 'googleapis.com' || hostname.endsWith('.googleapis.com') ||
-      hostname === 'googleadservices.com' || hostname.endsWith('.googleadservices.com')
+      hostname === 'googleadservices.com' || hostname.endsWith('.googleadservices.com') ||
+      hostname === 'psidio.web.app'
     );
   };
 
@@ -318,7 +496,6 @@ function createServiceView(key) {
       
       const hostname = parsedUrl.hostname.toLowerCase();
       
-      // Intercept YouTube's redirect endpoint (used for tracking links in descriptions)
       if (hostname.endsWith('youtube.com') && parsedUrl.pathname === '/redirect') {
         const dest = parsedUrl.searchParams.get('q');
         if (dest) {
@@ -327,7 +504,7 @@ function createServiceView(key) {
             if (!isInternalHost(destParsed.hostname.toLowerCase())) {
               return dest;
             } else {
-              return null; // It's an internal redirect, allow normal navigation
+              return null;
             }
           } catch (e) {
             return null;
@@ -338,13 +515,10 @@ function createServiceView(key) {
       if (!isInternalHost(hostname)) {
         return urlStr;
       }
-    } catch (err) {
-      // Invalid URL, let Electron handle it or ignore
-    }
+    } catch (err) {}
     return null;
   };
 
-  // 1. Handle standard link clicks (replaces current view)
   wc.on('will-navigate', (event, url) => {
     const externalUrl = getExternalUrl(url);
     if (externalUrl) {
@@ -353,8 +527,63 @@ function createServiceView(key) {
     }
   });
 
-  // 2. Handle links that try to open in a new window/tab (e.g., target="_blank")
   wc.setWindowOpenHandler(({ url }) => {
+    // 1. Handle Psidio Video Overlay
+    if (url.includes('psidio.web.app/etarunnel/?watch=')) {
+      if (!videoView) {
+        videoView = new WebContentsView({
+          webPreferences: {
+            partition: PARTITION,
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: true,
+            autoplayPolicy: 'no-user-gesture-required',
+          }
+        });
+        win.contentView.addChildView(videoView);
+        layoutViews();
+        
+        videoView.webContents.loadURL(url);
+        
+        // Inject Poppins font and the Close Button when the overlay loads
+        videoView.webContents.on('dom-ready', () => {
+          injectPoppins(videoView.webContents);
+          injectCloseButton(videoView.webContents);
+        });
+        
+        videoView.webContents.on('did-navigate', () => {
+          injectCloseButton(videoView.webContents); // Re-inject in case of SPA route changes
+        });
+
+        // Intercept the custom close URL triggered by the close button
+        videoView.webContents.on('will-navigate', (event, navUrl) => {
+          if (navUrl.startsWith('etarunnel://close')) {
+            event.preventDefault();
+            closeVideoView();
+            return;
+          }
+          if (!navUrl.includes('psidio.web.app')) {
+            event.preventDefault();
+            shell.openExternal(navUrl);
+          }
+        });
+
+        videoView.webContents.on('destroyed', () => {
+          if (videoView && videoView.webContents.isDestroyed()) {
+            try { win.contentView.removeChildView(videoView); } catch(e){}
+            videoView = null;
+            layoutViews();
+            activeWC()?.focus();
+            broadcast();
+          }
+        });
+      } else {
+        videoView.webContents.loadURL(url);
+      }
+      return { action: 'deny' };
+    }
+
+    // 2. Handle standard external links
     const externalUrl = getExternalUrl(url);
     if (externalUrl) {
       shell.openExternal(externalUrl);
@@ -362,14 +591,21 @@ function createServiceView(key) {
     }
     return { action: 'allow' };
   });
-  // --- END: Intercept external links ---
+  // --- END: Intercept external links & Video overlay ---
 
-  wc.on('dom-ready', () => injectPoppins(wc));
+  wc.on('dom-ready', () => {
+    injectPoppins(wc);
+    wc.executeJavaScript(`(${videoInterceptMainWorld.toString()})()`).catch(e => console.warn('[Etarunnel] Video intercept injection failed:', e.message));
+  });
+  
   wc.on('did-finish-load', () => injectPoppins(wc));
+  
   wc.on('did-navigate', () => {
     wc.__tdFontsSent = false;
     armFontsReveal(view);
+    wc.executeJavaScript(`(${videoInterceptMainWorld.toString()})()`).catch(() => {});
   });
+
   wc.on('did-fail-load', (_e, code, _desc, _url, isMainFrame) => {
     if (isMainFrame && code !== -3) revealView(view);
   });
@@ -574,7 +810,12 @@ function layoutViews() {
   if (!win || !currentView) return;
   const { width, height } = win.getContentBounds();
   const y = htmlFullScreen ? 0 : TOOLBAR_HEIGHT;
-  currentView.setBounds({ x: 0, y, width, height: Math.max(0, height - y) });
+  const bounds = { x: 0, y, width, height: Math.max(0, height - y) };
+  
+  currentView.setBounds(bounds);
+  if (videoView) {
+    videoView.setBounds(bounds); // Ensure overlay covers the exact same area
+  }
 }
 
 function broadcast(extra = {}) {
@@ -585,7 +826,7 @@ function broadcast(extra = {}) {
     theme: currentTheme,
     serviceName: SERVICES[currentKey]?.name || '',
     waiting: waitingForFonts,
-    canBack: wc ? hist(wc).canGoBack() : false,
+    canBack: videoView ? true : (wc ? hist(wc).canGoBack() : false),
     canForward: wc ? hist(wc).canGoForward() : false,
     title: wc ? wc.getTitle() : '',
     loading: wc ? wc.isLoading() : false,
@@ -595,6 +836,12 @@ function broadcast(extra = {}) {
 }
 
 function navigate(dir) {
+  // If pressing Back while the video overlay is open, close the overlay
+  if (dir < 0 && videoView) {
+    console.log('[Etarunnel] Back pressed while overlay is open. Closing overlay.');
+    closeVideoView();
+    return;
+  }
   const wc = activeWC();
   if (!wc) return;
   if (dir < 0 && hist(wc).canGoBack()) wc.goBack();
@@ -607,7 +854,15 @@ function handlePageKeys(event, input, wc) {
   const key = (input.key || '').toLowerCase();
   const mod = input.meta || input.control;
 
-  if (input.alt && key === 'arrowleft')         { event.preventDefault(); wc.goBack(); }
+  if (input.alt && key === 'arrowleft') {
+    event.preventDefault();
+    if (videoView) {
+      console.log('[Etarunnel] Alt+Left pressed while overlay is open. Closing overlay.');
+      closeVideoView();
+    } else if (hist(wc).canGoBack()) {
+      wc.goBack();
+    }
+  }
   else if (input.alt && key === 'arrowright')   { event.preventDefault(); wc.goForward(); }
   else if (mod && key === 'r')                  { event.preventDefault(); wc.reload(); }
   else if (mod && key === '1')                  { event.preventDefault(); requestSwitch('youtube'); }
