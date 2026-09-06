@@ -7,6 +7,7 @@ Etarunnel is an Electron-based desktop client for YouTube and YouTube Music. It 
 YouTube with extended feature such as:
 - **Ad Blocking:** Intercepts network requests and API responses to block video and banner ads.
 - **Dual Services:** Supports switching between YouTube and YouTube Music instances.
+- **Custom Video Player:** Plays YouTube Video on /embed instead of watch to avoid ad block detection.
 
 ## Keyboard Shortcuts
 
